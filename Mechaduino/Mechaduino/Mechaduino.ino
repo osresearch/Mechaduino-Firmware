@@ -64,36 +64,70 @@ void setup()        // This code runs once at startup
   setupSPI();                       // Sets up SPI for communicating with encoder
   digitalWrite(ledPin,LOW);         // turn LED off 
   
-  // spot check some of the lookup table to decide if it has been filled in
-  if (lookup[0] == 0 && lookup[128] == 0 && lookup[1024] == 0)
-    SerialUSB.println("WARNING: Lookup table is empty! Run calibration");
-
   // Uncomment the below lines as needed for your application.
   // Leave commented for initial calibration and tuning.
   
-  //    configureStepDir();           // Configures setpoint to be controlled by step/dir interface
-  //    configureEnablePin();         // Active low, for use wath RAMPS 1.4 or similar
-  //     enableTCInterrupts();         // uncomment this line to start in closed loop 
-  //    mode = 'x';                   // start in position mode
+  // Configures setpoint to be controlled by step/dir interface
+  configureStepDir();
 
+  //    configureEnablePin();         // Active low, for use wath RAMPS 1.4 or similar
+
+
+  // spot check some of the lookup table to decide if it has been filled in
+  if (lookup[0] == 0 && lookup[128] == 0 && lookup[1024] == 0)
+  {
+    SerialUSB.println("WARNING: Lookup table is empty!");
+    SerialUSB.println("Run calibration before enabling hold mode.");
+    mode = ' ';
+  } else {
+    // start in position hold mode, so we need to sample the position
+    // a few times to ensure that we have a good value
+    int enc_sum = 0;
+    for(int i = 0 ; i < 100 ; i++)
+	    enc_sum += readEncoder();
+    r = lookup[enc_sum / 100];
+    mode = 'x';
+
+    SerialUSB.print("Initial setpoint ");
+    SerialUSB.println(r, 2);
+  }
+
+  // the system will hold position if there is a 
+  enableTCInterrupts();
 }
   
 
-
-//////////////////////////////////////
-/////////////////LOOP/////////////////
-//////////////////////////////////////
-
-
-void loop()                 // main loop
+void report_status()
 {
+	const unsigned report_interval = 1000;
+	static unsigned last_report;
+	const unsigned now = millis();
+	if (now - last_report < report_interval)
+		return;
 
-  serialCheck();              //must have this execute in loop for serial commands to function
+	last_report = now;
 
-  //r=0.1125*step_count;      //Don't use this anymore. Step interrupts enabled above by "configureStepDir()", adjust step size ("stepangle")in parameters.cpp
-
+	SerialUSB.print(now);
+	SerialUSB.print(" a=");
+	SerialUSB.print(y, 2);
+	SerialUSB.print(" A=");
+	SerialUSB.print(yw, 2);
+	SerialUSB.print(" r=");
+	SerialUSB.print(r, 2);
+	SerialUSB.print(" e=");
+	SerialUSB.print(enc);
+	SerialUSB.print(" v=");
+	SerialUSB.print(v, 2);
+	SerialUSB.print(" u=");
+	SerialUSB.print(u, 0);
+	SerialUSB.println();
 }
 
 
+void loop()
+{
+	report_status();
 
-
+	// must have this execute in loop for serial commands to function
+	serialCheck();
+}
