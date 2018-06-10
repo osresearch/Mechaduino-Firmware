@@ -177,6 +177,9 @@ static void store_lookup(float lookupAngle)
 
 void calibrate() {   /// this is the calibration routine
 
+  // can't use readEncoder while in closed loop
+  disableTCInterrupts();
+
   int encoderReading = 0;     //or float?  not sure if we can average for more res?
   int currentencoderReading = 0;
   int lastencoderReading = 0;
@@ -370,6 +373,9 @@ void calibrate() {   /// this is the calibration routine
   SerialUSB.println(" ");
 
 
+  // re-enable the interrupt, but in a non-functional mode
+  mode = ' ';
+  enableTCInterrupts();
 }
 
 
@@ -392,7 +398,8 @@ float read_angle()
 
 void serialCheck() {        //Monitors serial for commands.  Must be called in routinely in loop for serial interface to work.
 
-  if (SerialUSB.available()) {
+  if (!SerialUSB.available())
+	return;
 
     char inChar = (char)SerialUSB.read();
 
@@ -491,8 +498,6 @@ void serialCheck() {        //Monitors serial for commands.  Must be called in r
       default:
         break;
     }
-  }
-
 }
 
 
@@ -689,9 +694,11 @@ void print_angle()                ///////////////////////////////////       PRIN
 //  SerialUSB.print(stepNumber * aps, DEC);
 //  SerialUSB.print(" , ");
   SerialUSB.print("Angle: ");
-  SerialUSB.print(read_angle(), 2);
+  SerialUSB.print(y, 2);
+  SerialUSB.print(" Total Angle: ");
+  SerialUSB.print(yw, 2);
   SerialUSB.print(", raw encoder: ");
-  SerialUSB.print(readEncoder());
+  SerialUSB.print(enc);
   SerialUSB.println();
 }
 
@@ -1304,12 +1311,3 @@ void moveAbs(float pos_final,int vel_max, int accel){
   //SerialUSB.print(micros()-start);
   
 }
-
-
-
-
-
-
-
-
-
