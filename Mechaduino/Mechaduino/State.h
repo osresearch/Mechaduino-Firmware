@@ -8,6 +8,7 @@
 
 extern volatile int U;  //control effort (abs)
 extern volatile float r;  //setpoint
+extern volatile unsigned enc;  // last encoder measurement
 extern volatile float y;  // measured angle
 extern volatile float v;  // estimated velocity (velocity loop)
 extern volatile float yw;
@@ -39,11 +40,3 @@ extern int dir;
 
 extern bool print_yw;     //for step response, under development...
 #endif
-
-
-
-
-
-
-
-

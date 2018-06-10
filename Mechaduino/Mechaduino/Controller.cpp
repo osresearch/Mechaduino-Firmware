@@ -23,7 +23,8 @@ void TC5_Handler()
 	// digitalWrite(3, HIGH);
 
 	// read encoder and lookup corrected angle in calibration lookup table
-	y = lookup[readEncoder()];
+	enc = readEncoder();
+	y = lookup[enc];
 
 	// Check if we've rotated more than a full revolution
 	// (have we "wrapped" around from 359 degrees to 0 or from 0 to 359?)
@@ -35,6 +36,11 @@ void TC5_Handler()
 
 	// yw is the wrapped angle (can exceed one revolution)
 	yw = (y + (360.0 * wrap_count));
+
+	// low pass filter the velocity measurement based on the wrapped
+	// y position, since it will not have discontinuities
+	v = vLPFa*v + vLPFb*(yw-yw_1);
+
 
 	// choose control algorithm based on mode
 	switch (mode) {
@@ -53,17 +59,16 @@ void TC5_Handler()
 		if (ITerm < -150.0)
 			ITerm = -150.0;
 
-		DTerm = pLPFa*DTerm -  pLPFb*pKd*(yw-yw_1);
+		// multiply the velocity by the D gain
+		// this is a "slowing force", so it is negative
+		DTerm = pLPFa*DTerm - pLPFb*pKd*(yw-yw_1);
 
-		u = (pKp * e) + ITerm + DTerm;
+		// The output is Kp * e + Ki * I - Kd * v
+		u = pKp*e + ITerm + DTerm;
 
 		break;
 
 	case 'v': // velocity controller
-		// filtered velocity called "DTerm" because it is
-		// similar to derivative action in position loop
-		v = vLPFa*v +  vLPFb*(yw-yw_1);
-
 		// error in degrees per rpm (sample frequency in
 		// Hz * (60 seconds/min) / (360 degrees/rev) )
 		e = (r - v);
