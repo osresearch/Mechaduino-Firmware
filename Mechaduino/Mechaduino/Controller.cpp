@@ -7,6 +7,8 @@
 #include "Utils.h"
 #include "Parameters.h"
 
+extern void position_loop();
+
 
 // gets called with FPID frequency
 void TC5_Handler()
@@ -49,6 +51,8 @@ void TC5_Handler()
 		break;
 
         case 'x': // position control
+		position_loop();
+
 		e = (r - yw);
 		ITerm += (pKi * e);
 

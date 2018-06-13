@@ -70,7 +70,12 @@ void setup()        // This code runs once at startup
   // Configures setpoint to be controlled by step/dir interface
   configureStepDir();
 
-  //    configureEnablePin();         // Active low, for use wath RAMPS 1.4 or similar
+  // Active low, for use wath RAMPS 1.4 or similar
+  //configureEnablePin();
+
+  // Use pin 3 as a ground so that the we have convienent ground
+  pinMode(3, OUTPUT);
+  digitalWrite(3, LOW);
 
 
   // spot check some of the lookup table to decide if it has been filled in

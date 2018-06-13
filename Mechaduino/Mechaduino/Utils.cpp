@@ -11,6 +11,35 @@
 #include "State.h"
 #include "analogFastWrite.h"
 
+static float desired_vel = 1.0;
+static float desired_acc = 1.0;
+static float desired_pos = 0.0;
+
+void position_loop()
+{
+#if 0
+	unsigned long now = micros();
+	static unsigned long last_update;
+	if (last_update == 0 || last_update > 100000)
+	{
+		last_update = now;
+		return;
+	}
+
+	unsigned long dt = now - last_update;
+	last_update = now;
+#else
+	const float dt = 2.0 / Fs; // sample frequency
+#endif
+
+	float dp = desired_pos - r;
+	if (dp > +0.5)
+		r += desired_vel * dt;
+	else
+	if (dp < -0.5)
+		r -= desired_vel * dt;
+}
+
 void setupPins() {
 
   pinMode(VREF_2, OUTPUT);
@@ -395,7 +424,6 @@ float read_angle()
   return lookup[encoderReading / avg];
 }
 
-
 void serialCheck() {        //Monitors serial for commands.  Must be called in routinely in loop for serial interface to work.
 
   if (!SerialUSB.available())
@@ -405,7 +433,16 @@ void serialCheck() {        //Monitors serial for commands.  Must be called in r
 
     switch (inChar) {
 
+      case 'G': // go position and velocity
+        desired_pos = SerialUSB.parseFloat();
+	break;
+      case 'V': // set velocity
+        desired_vel = SerialUSB.parseFloat();
+	if (desired_vel < 0.1)
+		desired_vel = 0.1;
 
+	break;
+	
       case 'p':             //print
         print_angle();
         break;
