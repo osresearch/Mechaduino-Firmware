@@ -131,7 +131,7 @@ void report_status()
 
 void loop()
 {
-	report_status();
+	//report_status();
 
 	// must have this execute in loop for serial commands to function
 	serialCheck();

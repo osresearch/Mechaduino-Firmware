@@ -39,12 +39,109 @@ float read_angle()
   return lookup[encoderReading / avg];
 }
 
-void serialCheck() {        //Monitors serial for commands.  Must be called in routinely in loop for serial interface to work.
+static int gcode_g0(const char * args[], const int count)
+{
+	// find the X and F arguments
+	float x = 0;
+	float f = 0;
 
-  if (!SerialUSB.available())
-	return;
+	SerialUSB.println(count);
 
-    char inChar = (char)SerialUSB.read();
+	for(int i = 0 ; i < count ; i++)
+	{
+		SerialUSB.print("arg=");
+		SerialUSB.println(args[i]);
+
+		if (args[i][0] == 'X')
+			x = atof(&args[i][1]);
+		else
+		if (args[i][0] == 'F')
+			f = atof(&args[i][1]);
+		else
+			return -1;
+	}
+
+	desired_pos = x;
+	desired_vel = f;
+	return 0;
+}
+
+
+static int gcode_m114(const char * args[], const int count)
+{
+	char buf[256];
+	snprintf(buf, sizeof(buf),
+		"X:%.3f F:%.3f E:%u",
+		yw, // should be scaled from deg to mm
+		v, // should also be scaled deg/s to mm
+		enc // raw value
+	);
+	SerialUSB.println(buf);
+	return 0;
+}
+
+int gcode_line(char * line)
+{
+	char * cmd = strtok(line, " \t");
+	const char * args[16];
+	int count = 0;
+	while(count < 16 && (args[count++] = strtok(NULL, " \t")) != NULL)
+		;
+	count--;
+
+	if (strcmp(cmd, "G0") == 0
+	||  strcmp(cmd, "G1") == 0)
+		return gcode_g0(args, count);
+
+	if (strcmp(cmd, "M114") == 0)
+		return gcode_m114(args, count);
+
+	return -1;
+}
+
+
+// Monitors serial for commands.
+// Must be called in routinely in loop for serial interface to work.
+// Processes a line at a time
+void serialCheck()
+{
+	static char line[256];
+	static unsigned len;
+
+	if (!SerialUSB.available())
+		return;
+
+	const char c = (char) SerialUSB.read();
+
+	// strip any line feeds
+	if (c == '\r')
+		return;
+
+	if (len == sizeof(line))
+	{
+		SerialUSB.println("ERROR: gcode buffer overflow");
+		len = 0;
+		return;
+	}
+
+	if (c != '\n')
+	{
+		line[len++] = c;
+		return;
+	}
+
+	line[len] = '\0';
+
+	// echo the line to the serial port
+	SerialUSB.println(line);
+
+	if (gcode_line(line) < 0)
+		SerialUSB.println("ERROR: gcode failed");
+
+	len = 0;
+}
+
+#if 0
 
     switch (inChar) {
 
@@ -230,3 +327,4 @@ void oneStep() {           /////////////////////////////////   oneStep    //////
   output(aps * stepNumber, (int)(0.33 * uMAX));
   delay(10);
 }
+#endif
