@@ -15,6 +15,8 @@
 // box, but the calibration will ensure that the mapping is better
 const float __attribute__((__aligned__(256))) lookup[16384] = {};
 
+int lookup_valid = 0;
+
 
 static FlashClass flash;
 static const unsigned page_size = 256; // actual size is 64?
@@ -253,8 +255,14 @@ void calibrate()
 
   SerialUSB.println(" ");
 
-
   // re-enable the interrupt, but in a non-functional mode
   mode = ' ';
+  lookup_valid = 1;
   enableTCInterrupts();
+
+  // wait for the interrupt to resume and populate the yw value
+  // then enable hold mode
+  delay(200);
+  r = yw;
+  mode = 'x';
 }

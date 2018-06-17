@@ -26,7 +26,15 @@ void TC5_Handler()
 
 	// read encoder and lookup corrected angle in calibration lookup table
 	enc = readEncoder();
-	y = lookup[enc];
+
+	// if the lookup table isn't populated, use an approximation
+	if (lookup_valid)
+		y = lookup[enc];
+	else {
+		y = ((enc + 291 * 16384 / 360) % 16384) * 360.0 / 16384.0;
+		//y = enc * 360.0 / 16384.0;
+	}
+
 
 	// Check if we've rotated more than a full revolution
 	// (have we "wrapped" around from 359 degrees to 0 or from 0 to 359?)

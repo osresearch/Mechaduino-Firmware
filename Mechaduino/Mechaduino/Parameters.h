@@ -23,6 +23,7 @@ extern volatile float vKd;
 extern volatile float vLPF;
 
 extern const float lookup[];
+extern int lookup_valid;
 
 
 extern volatile float pLPFa;

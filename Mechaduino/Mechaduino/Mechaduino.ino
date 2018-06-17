@@ -78,27 +78,27 @@ void setup()        // This code runs once at startup
   digitalWrite(3, LOW);
 
 
+  // start the interrupt handler so that enc is filled in
+  enableTCInterrupts();
+  mode = ' ';
+
   // spot check some of the lookup table to decide if it has been filled in
   if (lookup[0] == 0 && lookup[128] == 0 && lookup[1024] == 0)
   {
     SerialUSB.println("WARNING: Lookup table is empty!");
     SerialUSB.println("Run calibration before enabling hold mode.");
-    mode = ' ';
+    lookup_valid = 0;
   } else {
-    // start in position hold mode, so we need to sample the position
-    // a few times to ensure that we have a good value
-    int enc_sum = 0;
-    for(int i = 0 ; i < 100 ; i++)
-	    enc_sum += readEncoder();
-    r = lookup[enc_sum / 100];
-    mode = 'x';
+    SerialUSB.println("Using lookup table");
+    lookup_valid = 1;
+  }
+
+    delay(200);
+    r = yw; // use the wrapped position value
+    mode = 'x'; // hold the current position
 
     SerialUSB.print("Initial setpoint ");
     SerialUSB.println(r, 2);
-  }
-
-  // the system will hold position if there is a 
-  enableTCInterrupts();
 }
   
 
