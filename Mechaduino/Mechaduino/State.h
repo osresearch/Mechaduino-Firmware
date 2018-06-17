@@ -39,4 +39,10 @@ extern char mode;
 extern int dir;
 
 extern bool print_yw;     //for step response, under development...
+
+// Controller set points
+extern float desired_vel;
+extern float desired_acc;
+extern float desired_pos;
+
 #endif

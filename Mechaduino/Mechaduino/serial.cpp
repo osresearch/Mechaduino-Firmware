@@ -1,0 +1,232 @@
+#include <SPI.h>
+#include <Wire.h>
+
+#include "Parameters.h"
+#include "Controller.h"
+#include "Utils.h"
+#include "State.h"
+
+void print_angle()                ///////////////////////////////////       PRINT_ANGLE   /////////////////////////////////
+{
+  SerialUSB.print("stepNumber: ");
+  SerialUSB.print(stepNumber, DEC);
+  SerialUSB.print(" , ");
+//  SerialUSB.print(stepNumber * aps, DEC);
+//  SerialUSB.print(" , ");
+  SerialUSB.print("Angle: ");
+  SerialUSB.print(y, 2);
+  SerialUSB.print(" Total Angle: ");
+  SerialUSB.print(yw, 2);
+  SerialUSB.print(", raw encoder: ");
+  SerialUSB.print(enc);
+  SerialUSB.println();
+}
+
+
+float read_angle()
+{
+  const int avg = 10;            //average a few readings
+  int encoderReading = 0;
+
+  disableTCInterrupts();        //can't use readEncoder while in closed loop
+
+  for (int reading = 0; reading < avg; reading++) {  //average multple readings at each step
+    encoderReading += readEncoder();
+    delay(10);
+    }
+
+  //return encoderReading * (360.0 / 16384.0) / avg;
+  return lookup[encoderReading / avg];
+}
+
+void serialCheck() {        //Monitors serial for commands.  Must be called in routinely in loop for serial interface to work.
+
+  if (!SerialUSB.available())
+	return;
+
+    char inChar = (char)SerialUSB.read();
+
+    switch (inChar) {
+
+      case 'G': // go position and velocity
+        desired_pos = SerialUSB.parseFloat();
+	break;
+      case 'V': // set velocity
+        desired_vel = SerialUSB.parseFloat();
+	if (desired_vel < 0.1)
+		desired_vel = 0.1;
+
+	break;
+	
+      case 'p':             //print
+        print_angle();
+        break;
+
+      case 's':             //step
+        oneStep();
+        print_angle();
+        break;
+
+      case 'd':             //dir
+        if (dir) {
+          dir = false;
+        }
+        else {
+          dir = true;
+        }
+        break;
+
+      case 'w':                //old command
+        calibrate();           //cal routine
+        break;
+        
+      case 'c':
+        calibrate();           //cal routine
+        break;        
+
+      case 'e':
+        readEncoderDiagnostics();   //encoder error?
+        break;
+
+      case 'y':
+        r = read_angle();          // hold the current position
+        SerialUSB.print("New setpoint ");
+        SerialUSB.println(r, 2);
+        enableTCInterrupts();      //enable closed loop
+        break;
+
+      case 'n':
+        disableTCInterrupts();      //disable closed loop
+        break;
+
+      case 'r':             //new setpoint
+        SerialUSB.println("Enter setpoint:");
+        while (SerialUSB.available() == 0)  {}
+        r = SerialUSB.parseFloat();
+        SerialUSB.println(r);
+        break;
+
+      case 'x':
+        mode = 'x';           //position loop
+        break;
+
+      case 'v':
+        mode = 'v';           //velocity loop
+        break;
+
+      case 't':
+        mode = 't';           //torque loop
+        break;
+
+      case 'h':               //hybrid mode
+        mode = 'h';
+        break;
+
+      case 'q':
+        parameterQuery();     // prints copy-able parameters
+        break;
+
+      case 'a':             //anticogging
+        antiCoggingCal();
+        break;
+
+      case 'k':
+        parameterEditmain();
+        break;
+        
+      case 'g':
+        sineGen();
+        break;
+
+      case 'm':
+        serialMenu();
+        break;
+        
+      case 'j':
+        stepResponse();
+        break;
+
+
+      default:
+        break;
+    }
+}
+
+
+void parameterQuery() {         //print current parameters in a format that can be copied directly in to Parameters.cpp
+  SerialUSB.println(' ');
+  SerialUSB.println("----Current Parameters-----");
+  SerialUSB.println(' ');
+  SerialUSB.println(' ');
+
+  SerialUSB.print("volatile float Fs = ");
+  SerialUSB.print(Fs, DEC);
+  SerialUSB.println(";  //Sample frequency in Hz");
+  SerialUSB.println(' ');
+
+  SerialUSB.print("volatile float pKp = ");
+  SerialUSB.print(pKp, DEC);
+  SerialUSB.println(";      //position mode PID vallues.");
+  
+  SerialUSB.print("volatile float pKi = ");
+  SerialUSB.print(pKi, DEC);
+  SerialUSB.println(";");
+
+  SerialUSB.print("volatile float pKd = ");
+  SerialUSB.print(pKd, DEC);
+  SerialUSB.println(";");
+  
+  SerialUSB.print("volatile float pLPF = ");
+  SerialUSB.print(pLPF, DEC);
+  SerialUSB.println(";");
+
+  SerialUSB.println(' ');
+
+  SerialUSB.print("volatile float vKp = ");
+  SerialUSB.print(vKp, DEC);
+  SerialUSB.println(";      //velocity mode PID vallues.");
+
+  SerialUSB.print("volatile float vKi = ");
+  SerialUSB.print(vKi , DEC);
+  SerialUSB.println(";");
+ // SerialUSB.println(vKi * Fs, DEC);
+ // SerialUSB.println(" / Fs;");
+
+  SerialUSB.print("volatile float vKd = ");
+  SerialUSB.print(vKd, DEC);
+  SerialUSB.println(";");
+ // SerialUSB.print(vKd / Fs);
+ // SerialUSB.println(" * FS;");
+  SerialUSB.print("volatile float vLPF = ");
+  SerialUSB.print(vLPF, DEC);
+  SerialUSB.println(";");
+
+  SerialUSB.println("");
+  SerialUSB.println("//This is the encoder lookup table (created by calibration routine)");
+  SerialUSB.println("");
+  
+  SerialUSB.println("const float lookup[] = {");
+  for (int i = 0; i < 16384; i++) {
+    SerialUSB.print(lookup[i]);
+    SerialUSB.print(", ");
+  }
+  SerialUSB.println("");
+  SerialUSB.println("};");
+
+}
+
+
+
+void oneStep() {           /////////////////////////////////   oneStep    ///////////////////////////////
+  
+  if (!dir) {
+    stepNumber += 1;
+  }
+  else {
+    stepNumber -= 1;
+  }
+
+  //output(1.8 * stepNumber, 64); //updata 1.8 to aps..., second number is control effort
+  output(aps * stepNumber, (int)(0.33 * uMAX));
+  delay(10);
+}
