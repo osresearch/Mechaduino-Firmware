@@ -172,8 +172,8 @@ void serialCheck()
 
 	line[len] = '\0';
 
-	// echo the line to the serial port
-	SerialUSB.println(line);
+	// echo the line to the serial port for debugging, but not prod
+	//SerialUSB.println(line);
 
 	if (gcode_line(line) < 0)
 		SerialUSB.println("ERROR: gcode failed");
