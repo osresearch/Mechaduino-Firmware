@@ -54,10 +54,6 @@ void TC5_Handler()
 
 	// choose control algorithm based on mode
 	switch (mode) {
-	case 'h': // hybrid control is still under development...
-		hybridControl();
-		break;
-
         case 'x': // position control
 		position_loop();
 
@@ -168,7 +164,10 @@ void TC5_Handler()
 	TEST1_LOW();
 }
 
-
+/*
+ * The "inner" loop is controlled by this function that is updated
+ * every timer tick through the encoder processing.
+ */
 float desired_vel = 1.0;
 float desired_acc = 1.0;
 float desired_pos = 0.0;
@@ -187,6 +186,11 @@ position_loop()
 }
 
 
+/*
+ * The "outer" position loop is controlled by these functions that
+ * are called every time through the mainloop and are based on gcode
+ * input from the serial port.
+ */
 typedef struct {
 	float x;
 	float v;
@@ -260,10 +264,11 @@ controller_loop()
 	desired_pos = p->x;
 	desired_vel = p->v;
 
-	char buf[256];
-	snprintf(buf, sizeof(buf), "GOTO X:%.3f F:%.3f", p->x, p->v);
-
-	SerialUSB.println(buf);
+	SerialUSB.print("GOTO X:");
+	SerialUSB.print(p->x, 3);
+	SerialUSB.print(" F:");
+	SerialUSB.print(p->v, 3);
+	SerialUSB.println();
 
 	// report this as done if we ever reach it
 	report_done = 0;

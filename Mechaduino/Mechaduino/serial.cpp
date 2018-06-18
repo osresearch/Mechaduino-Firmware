@@ -56,6 +56,7 @@ static int gcode_m0(const char ** argc, const int count)
 	return 0;
 }
 
+
 static int gcode_m17(const char ** argc, const int count)
 {
 	controller_clear();
@@ -63,6 +64,34 @@ static int gcode_m17(const char ** argc, const int count)
 	SerialUSB.println("START");
 	return 0;
 }
+
+
+static int gcode_calibrate(const char ** argc, const int count)
+{
+	calibrate();
+	controller_clear();
+	return 0;
+}
+
+static int gcode_help(const char ** argc, const int count);
+
+static const struct {
+	const char * const cmd;
+	int (*handler)(const char ** argc, const int count);
+	const char * const help;
+} gcode_handlers[] = {
+	{ "G0", gcode_g0, "Move rapid" },
+	{ "G1", gcode_g0, "Move linear" },
+	{ "M0", gcode_m0, "Emergency stop" },
+	{ "M17", gcode_m17, "Motors on" },
+	{ "M18", gcode_m0, "Motors off" },
+	{ "M114", gcode_m114, "Report position" },
+	{ "c", gcode_calibrate, "Calibrate encoder" },
+	{ "?", gcode_help, "Help" },
+};
+
+static const unsigned num_handlers
+	= sizeof(gcode_handlers)/sizeof(*gcode_handlers);
 
 
 int gcode_line(char * line)
@@ -74,20 +103,15 @@ int gcode_line(char * line)
 		;
 	count--;
 
-	if (strcmp(cmd, "G0") == 0
-	||  strcmp(cmd, "G1") == 0)
-		return gcode_g0(args, count);
+	for(unsigned i = 0 ; i < num_handlers; i++)
+	{
+		if (strcmp(cmd, gcode_handlers[i].cmd) != 0)
+			continue;
+		return gcode_handlers[i].handler(args, count);
+	}
 
-	if (strcmp(cmd, "M0") == 0
-	||  strcmp(cmd, "M18") == 0)
-		return gcode_m0(args, count);
-
-	if (strcmp(cmd, "M17") == 0)
-		return gcode_m17(args, count);
-
-	if (strcmp(cmd, "M114") == 0)
-		return gcode_m114(args, count);
-
+	SerialUSB.print("UKNOWN GCODE: ");
+	SerialUSB.println(cmd);
 	return -1;
 }
 
@@ -133,190 +157,33 @@ void serialCheck()
 	len = 0;
 }
 
-#if 0
+void serialMenu() {
+	SerialUSB.println("----- Mechaduino 0.X -----");
 
-    switch (inChar) {
+	SerialUSB.print("Firmware: ");
+	SerialUSB.println(firmware_version);
 
-      case 'G': // go position and velocity
-        desired_pos = SerialUSB.parseFloat();
-	break;
-      case 'V': // set velocity
-        desired_vel = SerialUSB.parseFloat();
-	if (desired_vel < 0.1)
-		desired_vel = 0.1;
+	SerialUSB.print("Identifier: ");
+	SerialUSB.println(identifier);
 
-	break;
-	
-      case 'p':             //print
-        print_angle();
-        break;
+	SerialUSB.print("GCODES:");
+	for(unsigned i = 0 ; i < num_handlers ; i++)
+	{
+		SerialUSB.print(" ");
+		SerialUSB.print(gcode_handlers[i].cmd);
+	}
 
-      case 's':             //step
-        oneStep();
-        print_angle();
-        break;
-
-      case 'd':             //dir
-        if (dir) {
-          dir = false;
-        }
-        else {
-          dir = true;
-        }
-        break;
-
-      case 'w':                //old command
-        calibrate();           //cal routine
-        break;
-        
-      case 'c':
-        calibrate();           //cal routine
-        break;        
-
-      case 'e':
-        readEncoderDiagnostics();   //encoder error?
-        break;
-
-      case 'y':
-        r = read_angle();          // hold the current position
-        SerialUSB.print("New setpoint ");
-        SerialUSB.println(r, 2);
-        enableTCInterrupts();      //enable closed loop
-        break;
-
-      case 'n':
-        disableTCInterrupts();      //disable closed loop
-        break;
-
-      case 'r':             //new setpoint
-        SerialUSB.println("Enter setpoint:");
-        while (SerialUSB.available() == 0)  {}
-        r = SerialUSB.parseFloat();
-        SerialUSB.println(r);
-        break;
-
-      case 'x':
-        mode = 'x';           //position loop
-        break;
-
-      case 'v':
-        mode = 'v';           //velocity loop
-        break;
-
-      case 't':
-        mode = 't';           //torque loop
-        break;
-
-      case 'h':               //hybrid mode
-        mode = 'h';
-        break;
-
-      case 'q':
-        parameterQuery();     // prints copy-able parameters
-        break;
-
-      case 'a':             //anticogging
-        antiCoggingCal();
-        break;
-
-      case 'k':
-        parameterEditmain();
-        break;
-        
-      case 'g':
-        sineGen();
-        break;
-
-      case 'm':
-        serialMenu();
-        break;
-        
-      case 'j':
-        stepResponse();
-        break;
-
-
-      default:
-        break;
-    }
+	SerialUSB.println("");
 }
 
-
-void parameterQuery() {         //print current parameters in a format that can be copied directly in to Parameters.cpp
-  SerialUSB.println(' ');
-  SerialUSB.println("----Current Parameters-----");
-  SerialUSB.println(' ');
-  SerialUSB.println(' ');
-
-  SerialUSB.print("volatile float Fs = ");
-  SerialUSB.print(Fs, DEC);
-  SerialUSB.println(";  //Sample frequency in Hz");
-  SerialUSB.println(' ');
-
-  SerialUSB.print("volatile float pKp = ");
-  SerialUSB.print(pKp, DEC);
-  SerialUSB.println(";      //position mode PID vallues.");
-  
-  SerialUSB.print("volatile float pKi = ");
-  SerialUSB.print(pKi, DEC);
-  SerialUSB.println(";");
-
-  SerialUSB.print("volatile float pKd = ");
-  SerialUSB.print(pKd, DEC);
-  SerialUSB.println(";");
-  
-  SerialUSB.print("volatile float pLPF = ");
-  SerialUSB.print(pLPF, DEC);
-  SerialUSB.println(";");
-
-  SerialUSB.println(' ');
-
-  SerialUSB.print("volatile float vKp = ");
-  SerialUSB.print(vKp, DEC);
-  SerialUSB.println(";      //velocity mode PID vallues.");
-
-  SerialUSB.print("volatile float vKi = ");
-  SerialUSB.print(vKi , DEC);
-  SerialUSB.println(";");
- // SerialUSB.println(vKi * Fs, DEC);
- // SerialUSB.println(" / Fs;");
-
-  SerialUSB.print("volatile float vKd = ");
-  SerialUSB.print(vKd, DEC);
-  SerialUSB.println(";");
- // SerialUSB.print(vKd / Fs);
- // SerialUSB.println(" * FS;");
-  SerialUSB.print("volatile float vLPF = ");
-  SerialUSB.print(vLPF, DEC);
-  SerialUSB.println(";");
-
-  SerialUSB.println("");
-  SerialUSB.println("//This is the encoder lookup table (created by calibration routine)");
-  SerialUSB.println("");
-  
-  SerialUSB.println("const float lookup[] = {");
-  for (int i = 0; i < 16384; i++) {
-    SerialUSB.print(lookup[i]);
-    SerialUSB.print(", ");
-  }
-  SerialUSB.println("");
-  SerialUSB.println("};");
-
+static int gcode_help(const char ** argc, const int count)
+{
+	SerialUSB.println("Supported gcodes:");
+	for(unsigned i = 0 ; i < num_handlers ; i++)
+	{
+		SerialUSB.print(gcode_handlers[i].cmd);
+		SerialUSB.print(": ");
+		SerialUSB.println(gcode_handlers[i].help);
+	}
 }
 
-
-
-void oneStep() {           /////////////////////////////////   oneStep    ///////////////////////////////
-  
-  if (!dir) {
-    stepNumber += 1;
-  }
-  else {
-    stepNumber -= 1;
-  }
-
-  //output(1.8 * stepNumber, 64); //updata 1.8 to aps..., second number is control effort
-  output(aps * stepNumber, (int)(0.33 * uMAX));
-  delay(10);
-}
-#endif
