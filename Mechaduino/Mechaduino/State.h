@@ -12,6 +12,7 @@ extern volatile unsigned enc;  // last encoder measurement
 extern volatile float y;  // measured angle
 extern volatile float v;  // estimated velocity (velocity loop)
 extern volatile float yw;
+extern volatile float yw_offset; // "zero" position from the gcode controller
 extern volatile float yw_1;
 extern volatile float e;  // e = r-y (error)
 extern volatile float p;  // proportional effort

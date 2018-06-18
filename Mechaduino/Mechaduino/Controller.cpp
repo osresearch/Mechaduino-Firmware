@@ -45,7 +45,7 @@ void TC5_Handler()
 		wrap_count -= 1;
 
 	// yw is the wrapped angle (can exceed one revolution)
-	yw = (y + (360.0 * wrap_count));
+	yw = y + (360.0 * wrap_count) + yw_offset;
 
 	// low pass filter the velocity measurement based on the wrapped
 	// y position, since it will not have discontinuities
@@ -200,6 +200,30 @@ static point_t points[256];
 static uint8_t head;
 static uint8_t tail;
 static uint8_t report_done;
+
+
+/*
+ * Update the the yw_offset so that the current position
+ * is the one requested by the user (typically 0).
+ * This has to update the offset and the desired point with
+ * interrupts off to avoid weirdness.
+ */
+void
+controller_set_position(
+	float new_position
+)
+{
+	noInterrupts();
+
+	float old_offset = yw_offset;
+	float cur_position = yw;
+	float real_position = yw - yw_offset;
+
+	yw_offset = new_position - real_position;
+	yw_1 = yw = desired_pos = r = new_position;
+
+	interrupts();
+}
 
 int
 controller_add_point(

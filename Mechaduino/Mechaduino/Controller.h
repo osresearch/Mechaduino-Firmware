@@ -21,4 +21,9 @@ controller_loop();
 extern void
 controller_clear();
 
+extern void
+controller_set_position(
+	float new_position
+);
+
 #endif

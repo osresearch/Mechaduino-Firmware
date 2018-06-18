@@ -33,6 +33,29 @@ static int gcode_g0(const char * args[], const int count)
 }
 
 
+static int gcode_g92(const char * args[], const int count)
+{
+	// find the X, if there is one specified
+	float x = 0;
+
+	//SerialUSB.println(count);
+
+	for(int i = 0 ; i < count ; i++)
+	{
+		//SerialUSB.print("arg=");
+		//SerialUSB.println(args[i]);
+
+		if (args[i][0] == 'X')
+			x = atof(&args[i][1]);
+		else
+			return -1;
+	}
+
+	controller_set_position(x);
+	return 0;
+}
+
+
 static int gcode_m114(const char * args[], const int count)
 {
 	SerialUSB.print("X:");
@@ -86,6 +109,7 @@ static const struct {
 	{ "M17", gcode_m17, "Motors on" },
 	{ "M18", gcode_m0, "Motors off" },
 	{ "M114", gcode_m114, "Report position" },
+	{ "G92", gcode_g92, "Set position" },
 	{ "c", gcode_calibrate, "Calibrate encoder" },
 	{ "?", gcode_help, "Help" },
 };
