@@ -3,7 +3,7 @@
 #ifndef __PARAMETERS_H__
 #define __PARAMETERS_H__
 
-#define firmware_version "0.1.4"    //firmware version
+#define firmware_version "0.2.0"    //firmware version
 #define identifier "x"              // change this to help keep track of multiple mechaduinos (printed on startup)
 
 //----Current Parameters-----

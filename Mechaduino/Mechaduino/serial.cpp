@@ -35,15 +35,15 @@ static int gcode_g0(const char * args[], const int count)
 
 static int gcode_m114(const char * args[], const int count)
 {
-	char buf[256];
-	snprintf(buf, sizeof(buf),
-		"X:%.3f F:%.3f E:%u M:%c",
-		yw, // should be scaled from deg to mm
-		v, // should also be scaled deg/s to mm
-		enc, // raw value
-		mode
-	);
-	SerialUSB.println(buf);
+	SerialUSB.print("X:");
+	SerialUSB.print(yw, 3);
+	SerialUSB.print(" F:");
+	SerialUSB.print(v, 3);
+	SerialUSB.print(" E:");
+	SerialUSB.print(enc);
+	SerialUSB.print(" M:");
+	SerialUSB.print(mode == ' ' ? '0' : mode);
+	SerialUSB.println();
 	return 0;
 }
 
