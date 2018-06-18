@@ -6,38 +6,6 @@
 #include "Utils.h"
 #include "State.h"
 
-void print_angle()                ///////////////////////////////////       PRINT_ANGLE   /////////////////////////////////
-{
-  SerialUSB.print("stepNumber: ");
-  SerialUSB.print(stepNumber, DEC);
-  SerialUSB.print(" , ");
-//  SerialUSB.print(stepNumber * aps, DEC);
-//  SerialUSB.print(" , ");
-  SerialUSB.print("Angle: ");
-  SerialUSB.print(y, 2);
-  SerialUSB.print(" Total Angle: ");
-  SerialUSB.print(yw, 2);
-  SerialUSB.print(", raw encoder: ");
-  SerialUSB.print(enc);
-  SerialUSB.println();
-}
-
-
-float read_angle()
-{
-  const int avg = 10;            //average a few readings
-  int encoderReading = 0;
-
-  disableTCInterrupts();        //can't use readEncoder while in closed loop
-
-  for (int reading = 0; reading < avg; reading++) {  //average multple readings at each step
-    encoderReading += readEncoder();
-    delay(10);
-    }
-
-  //return encoderReading * (360.0 / 16384.0) / avg;
-  return lookup[encoderReading / avg];
-}
 
 static int gcode_g0(const char * args[], const int count)
 {
@@ -45,12 +13,12 @@ static int gcode_g0(const char * args[], const int count)
 	float x = 0;
 	float f = 0;
 
-	SerialUSB.println(count);
+	//SerialUSB.println(count);
 
 	for(int i = 0 ; i < count ; i++)
 	{
-		SerialUSB.print("arg=");
-		SerialUSB.println(args[i]);
+		//SerialUSB.print("arg=");
+		//SerialUSB.println(args[i]);
 
 		if (args[i][0] == 'X')
 			x = atof(&args[i][1]);
@@ -61,9 +29,7 @@ static int gcode_g0(const char * args[], const int count)
 			return -1;
 	}
 
-	desired_pos = x;
-	desired_vel = f;
-	return 0;
+	return controller_add_point(x, f);
 }
 
 
@@ -71,14 +37,33 @@ static int gcode_m114(const char * args[], const int count)
 {
 	char buf[256];
 	snprintf(buf, sizeof(buf),
-		"X:%.3f F:%.3f E:%u",
+		"X:%.3f F:%.3f E:%u M:%c",
 		yw, // should be scaled from deg to mm
 		v, // should also be scaled deg/s to mm
-		enc // raw value
+		enc, // raw value
+		mode
 	);
 	SerialUSB.println(buf);
 	return 0;
 }
+
+
+static int gcode_m0(const char ** argc, const int count)
+{
+	mode = ' ';
+	controller_clear();
+	SerialUSB.println("STOP");
+	return 0;
+}
+
+static int gcode_m17(const char ** argc, const int count)
+{
+	controller_clear();
+	mode = 'x';
+	SerialUSB.println("START");
+	return 0;
+}
+
 
 int gcode_line(char * line)
 {
@@ -92,6 +77,13 @@ int gcode_line(char * line)
 	if (strcmp(cmd, "G0") == 0
 	||  strcmp(cmd, "G1") == 0)
 		return gcode_g0(args, count);
+
+	if (strcmp(cmd, "M0") == 0
+	||  strcmp(cmd, "M18") == 0)
+		return gcode_m0(args, count);
+
+	if (strcmp(cmd, "M17") == 0)
+		return gcode_m17(args, count);
 
 	if (strcmp(cmd, "M114") == 0)
 		return gcode_m114(args, count);

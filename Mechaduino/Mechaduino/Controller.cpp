@@ -167,3 +167,106 @@ void TC5_Handler()
 	// for testing the control loop timing
 	TEST1_LOW();
 }
+
+
+float desired_vel = 1.0;
+float desired_acc = 1.0;
+float desired_pos = 0.0;
+
+void
+position_loop()
+{
+	const float dt = 1.0 / Fs; // sample frequency
+
+	float dp = desired_pos - r;
+	if (dp > +0.5)
+		r += desired_vel * dt;
+	else
+	if (dp < -0.5)
+		r -= desired_vel * dt;
+}
+
+
+typedef struct {
+	float x;
+	float v;
+} point_t;
+
+static point_t points[256];
+static uint8_t head;
+static uint8_t tail;
+static uint8_t report_done;
+
+int
+controller_add_point(
+	float x,
+	float v
+)
+{
+	if (head+1 == tail)
+	{
+		SerialUSB.println("POINT BUFFER FULL");
+		return -1;
+	}
+
+	// negative velocty is an error
+	if (v < 0)
+		return -1;
+
+	// zero velocity means use the last one
+	static float last_v = 1;
+	if (v == 0)
+		v = last_v;
+	else
+		last_v = v;
+
+	point_t * const p = &points[head++];
+	p->x = x;
+	p->v = v;
+
+	return 0;
+}
+
+
+void
+controller_clear()
+{
+	head = tail = 0;
+	desired_pos = r = yw;
+	desired_vel = 0;
+}
+
+
+int
+controller_loop()
+{
+	float dp = desired_pos - r;
+	if (fabs(dp) > 0.5)
+		return 0;
+
+	// we are close enough to the destination point
+	// do we have any new points on our list?
+	if (head == tail)
+	{
+		if (!report_done)
+			SerialUSB.println("DONE");
+		report_done = 1;
+		return 0;
+	}
+
+
+	// we do have a point! let's set it as our new destination
+	point_t * const p = &points[tail++];
+	desired_pos = p->x;
+	desired_vel = p->v;
+
+	char buf[256];
+	snprintf(buf, sizeof(buf), "GOTO X:%.3f F:%.3f", p->x, p->v);
+
+	SerialUSB.println(buf);
+
+	// report this as done if we ever reach it
+	report_done = 0;
+
+	return 1;
+}

@@ -9,13 +9,16 @@
 
 void TC5_Handler();
 
+extern int
+controller_add_point(
+	float x,
+	float v
+);
+
+extern int
+controller_loop();
+
+extern void
+controller_clear();
 
 #endif
-
-
-
-
-
-
-
-

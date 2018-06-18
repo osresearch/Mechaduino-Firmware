@@ -43,6 +43,7 @@
 
 #include "Utils.h"
 #include "Parameters.h"
+#include "Controller.h"
 #include "State.h"
 #include "analogFastWrite.h"
 
@@ -94,7 +95,7 @@ void setup()        // This code runs once at startup
   }
 
     delay(200);
-    r = yw; // use the wrapped position value
+    controller_clear();
     mode = 'x'; // hold the current position
 
     SerialUSB.print("Initial setpoint ");
@@ -133,6 +134,9 @@ void loop()
 {
 	//report_status();
 
-	// must have this execute in loop for serial commands to function
+	// gcode waypoint loop
+	controller_loop();
+
+	// check for new gcode commands
 	serialCheck();
 }
